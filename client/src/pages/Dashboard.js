@@ -19,6 +19,8 @@ import {
 } from 'chart.js';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, ArcElement, Title, Tooltip, Legend);
 
@@ -178,8 +180,125 @@ const Dashboard = () => {
     plugins: {
       legend: {
         display: true,
+        position: 'top',
+        labels: {
+          font: {
+            size: 12
+          }
+        }
       },
+      title: {
+        display: true,
+        text: `${chartType.toUpperCase()} Chart - ${yAxis} vs ${xAxis}`,
+        font: {
+          size: 16,
+          weight: 'bold'
+        }
+      }
     },
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: xAxis,
+          font: {
+            size: 14,
+            weight: 'bold'
+          }
+        },
+        ticks: {
+          font: {
+            size: 12
+          }
+        }
+      },
+      y: {
+        title: {
+          display: true,
+          text: yAxis,
+          font: {
+            size: 14,
+            weight: 'bold'
+          }
+        },
+        ticks: {
+          font: {
+            size: 12
+          }
+        }
+      }
+    }
+  };
+
+  // Chart download functions
+  const downloadChartAsPNG = async () => {
+    const chartContainer = document.querySelector('.chart-container');
+    if (!chartContainer) return;
+    
+    try {
+      // Set container to fixed size for better export
+      const originalStyle = chartContainer.style.cssText;
+      chartContainer.style.width = '800px';
+      chartContainer.style.height = '600px';
+      chartContainer.style.padding = '20px';
+      chartContainer.style.backgroundColor = 'white';
+      
+      const canvas = await html2canvas(chartContainer, {
+        scale: 2, // Higher resolution
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        allowTaint: true
+      });
+      
+      // Restore original style
+      chartContainer.style.cssText = originalStyle;
+      
+      const link = document.createElement('a');
+      link.download = `chart-${chartType}-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png', 1.0);
+      link.click();
+    } catch (error) {
+      console.error('Error downloading PNG:', error);
+    }
+  };
+
+  const downloadChartAsPDF = async () => {
+    const chartContainer = document.querySelector('.chart-container');
+    if (!chartContainer) return;
+    
+    try {
+      // Set container to fixed size for better export
+      const originalStyle = chartContainer.style.cssText;
+      chartContainer.style.width = '800px';
+      chartContainer.style.height = '600px';
+      chartContainer.style.padding = '20px';
+      chartContainer.style.backgroundColor = 'white';
+      
+      const canvas = await html2canvas(chartContainer, {
+        scale: 2, // Higher resolution
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        allowTaint: true
+      });
+      
+      // Restore original style
+      chartContainer.style.cssText = originalStyle;
+      
+      const imgData = canvas.toDataURL('image/png', 1.0);
+      
+      const pdf = new jsPDF('landscape', 'mm', 'a4');
+      const imgWidth = 280;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      // Center the image on the page
+      const x = (297 - imgWidth) / 2;
+      const y = (210 - imgHeight) / 2;
+      
+      pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+      pdf.save(`chart-${chartType}-${Date.now()}.pdf`);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+    }
   };
 
   if (error) {
@@ -301,41 +420,66 @@ const Dashboard = () => {
             )}
             {/* Render Chart */}
             {uploadResult && xAxis && yAxis && chartType !== '3d' && (
-              <div className="bg-gray-50 p-4 rounded" style={{ height: '400px' }}>
-                {(() => {
-                  const chartData = getChartData();
-                  if (!chartData) {
-                    return <div className="text-red-600">No valid data found for selected columns</div>;
-                  }
-                  console.log('Rendering chart:', chartType, chartData);
-                  return (
-                    <>
-                      {chartType === 'bar' && <Bar data={chartData} options={chartOptions} />}
-                      {chartType === 'line' && <Line data={chartData} options={chartOptions} />}
-                      {chartType === 'pie' && <Pie data={{
-                        labels: chartData.labels,
-                        datasets: [{
-                          data: chartData.datasets[0].data,
-                          backgroundColor: [
-                            'rgba(255, 99, 132, 0.5)',
-                            'rgba(54, 162, 235, 0.5)',
-                            'rgba(255, 206, 86, 0.5)',
-                            'rgba(75, 192, 192, 0.5)',
-                            'rgba(153, 102, 255, 0.5)',
-                            'rgba(255, 159, 64, 0.5)'
-                          ],
-                        }],
-                      }} options={chartOptions} />}
-                      {chartType === 'scatter' && (() => {
-                        const scatterData = getScatterData();
-                        if (!scatterData) {
-                          return <div className="text-red-600">No valid numeric data for scatter chart</div>;
-                        }
-                        return <Scatter data={scatterData} options={chartOptions} />;
-                      })()}
-                    </>
-                  );
-                })()}
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <div className="mb-4 flex gap-2">
+                  <button 
+                    onClick={downloadChartAsPNG}
+                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-semibold"
+                  >
+                    📥 Download PNG
+                  </button>
+                  <button 
+                    onClick={downloadChartAsPDF}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-semibold"
+                  >
+                    📄 Download PDF
+                  </button>
+                </div>
+                <div className="chart-container bg-white p-4 rounded border" style={{ height: '500px', minHeight: '500px' }}>
+                  {(() => {
+                    const chartData = getChartData();
+                    if (!chartData) {
+                      return <div className="text-red-600 text-center py-8">No valid data found for selected columns</div>;
+                    }
+                    console.log('Rendering chart:', chartType, chartData);
+                    return (
+                      <>
+                        {chartType === 'bar' && <Bar data={chartData} options={chartOptions} />}
+                        {chartType === 'line' && <Line data={chartData} options={chartOptions} />}
+                        {chartType === 'pie' && <Pie data={{
+                          labels: chartData.labels,
+                          datasets: [{
+                            data: chartData.datasets[0].data,
+                            backgroundColor: [
+                              'rgba(255, 99, 132, 0.8)',
+                              'rgba(54, 162, 235, 0.8)',
+                              'rgba(255, 206, 86, 0.8)',
+                              'rgba(75, 192, 192, 0.8)',
+                              'rgba(153, 102, 255, 0.8)',
+                              'rgba(255, 159, 64, 0.8)'
+                            ],
+                            borderColor: [
+                              'rgba(255, 99, 132, 1)',
+                              'rgba(54, 162, 235, 1)',
+                              'rgba(255, 206, 86, 1)',
+                              'rgba(75, 192, 192, 1)',
+                              'rgba(153, 102, 255, 1)',
+                              'rgba(255, 159, 64, 1)'
+                            ],
+                            borderWidth: 2
+                          }],
+                        }} options={chartOptions} />}
+                        {chartType === 'scatter' && (() => {
+                          const scatterData = getScatterData();
+                          if (!scatterData) {
+                            return <div className="text-red-600 text-center py-8">No valid numeric data for scatter chart</div>;
+                          }
+                          return <Scatter data={scatterData} options={chartOptions} />;
+                        })()}
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
             )}
             {/* Debug Info */}
@@ -349,21 +493,37 @@ const Dashboard = () => {
                 <p>Columns: {uploadResult.columns?.join(', ')}</p>
               </div>
             )}
-            {/* 3D Chart Placeholder */}
+            {/* 3D Chart with Download */}
             {uploadResult && xAxis && yAxis && chartType === '3d' && (
-              <div className="h-96 bg-gray-50 rounded">
-                <Canvas camera={{ position: [0, 10, 20], fov: 50 }}>
-                  <ambientLight intensity={0.5} />
-                  <pointLight position={[10, 10, 10]} />
-                  {/* Simple 3D columns for demo */}
-                  {getChartData().labels.map((label, i) => (
-                    <mesh key={label} position={[i * 2 - getChartData().labels.length, getChartData().datasets[0].data[i] / 2, 0]}>
-                      <boxGeometry args={[1, getChartData().datasets[0].data[i], 1]} />
-                      <meshStandardMaterial color={'#36a2eb'} />
-                    </mesh>
-                  ))}
-                  <OrbitControls />
-                </Canvas>
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <div className="mb-4 flex gap-2">
+                  <button 
+                    onClick={downloadChartAsPNG}
+                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-semibold"
+                  >
+                    📥 Download PNG
+                  </button>
+                  <button 
+                    onClick={downloadChartAsPDF}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-semibold"
+                  >
+                    📄 Download PDF
+                  </button>
+                </div>
+                <div className="chart-container bg-white p-4 rounded border" style={{ height: '500px', minHeight: '500px' }}>
+                  <Canvas camera={{ position: [0, 10, 20], fov: 50 }}>
+                    <ambientLight intensity={0.5} />
+                    <pointLight position={[10, 10, 10]} />
+                    {/* Simple 3D columns for demo */}
+                    {getChartData().labels.map((label, i) => (
+                      <mesh key={label} position={[i * 2 - getChartData().labels.length, getChartData().datasets[0].data[i] / 2, 0]}>
+                        <boxGeometry args={[1, getChartData().datasets[0].data[i], 1]} />
+                        <meshStandardMaterial color={'#36a2eb'} />
+                      </mesh>
+                    ))}
+                    <OrbitControls />
+                  </Canvas>
+                </div>
               </div>
             )}
           </section>
