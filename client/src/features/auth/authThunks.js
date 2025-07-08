@@ -85,4 +85,50 @@ export const deleteUpload = (id) => async (dispatch, getState) => {
     dispatch(authFailure(err.message));
     throw err;
   }
+};
+
+// Admin thunks
+export const fetchAllUsers = () => async (dispatch, getState) => {
+  const { token } = getState().auth;
+  try {
+    const res = await fetch('http://localhost:3000/users/admin/users', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.msg || 'Failed to fetch users');
+    return data;
+  } catch (err) {
+    dispatch(authFailure(err.message));
+    throw err;
+  }
+};
+
+export const fetchAdminStats = () => async (dispatch, getState) => {
+  const { token } = getState().auth;
+  try {
+    const res = await fetch('http://localhost:3000/users/admin/stats', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.msg || 'Failed to fetch admin stats');
+    return data;
+  } catch (err) {
+    dispatch(authFailure(err.message));
+    throw err;
+  }
+};
+
+export const fetchUserUploads = (userId) => async (dispatch, getState) => {
+  const { token } = getState().auth;
+  try {
+    const res = await fetch(`http://localhost:3000/users/admin/user/${userId}/uploads`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.msg || 'Failed to fetch user uploads');
+    return data;
+  } catch (err) {
+    dispatch(authFailure(err.message));
+    throw err;
+  }
 }; 
